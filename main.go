@@ -92,11 +92,26 @@ func registerHandler(s *state, cmd command) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("User has been created in database: %v\n", user)
 
 	return nil
 }
+
+func resetHandler(s *state, cmd command) error {
+	if len(cmd.arguments) > 0 {
+		return fmt.Errorf("too many arguments")
+	}
+
+	userCount, err := s.db.DeleteAllUsers(context.Background())
+	if err != nil {
+		os.Exit(1)
+	}
+
+	fmt.Printf("%d users have been deleted from the database.", userCount)
+	return nil
+}
+
 
 func main() {
 	err := godotenv.Load()
@@ -127,6 +142,7 @@ func main() {
 
 	cmds.register("login", loginHandler)
 	cmds.register("register", registerHandler)
+	cmds.register("reset", resetHandler)
 
 	args := os.Args
 
