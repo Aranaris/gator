@@ -112,6 +112,28 @@ func resetHandler(s *state, cmd command) error {
 	return nil
 }
 
+func usersHandler(s *state, cmd command) error {
+	if len(cmd.arguments) > 0 {
+		return fmt.Errorf("too many arguments")
+	}
+
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for i := 0; i < len(users); i++ {
+		if users[i].Name == s.cfg.CurrentUser {
+			fmt.Printf("* %s (current)\n", users[i].Name)
+		} else {
+			fmt.Printf("* %s\n", users[i].Name)
+		}
+		
+	}
+
+	return nil
+}
 
 func main() {
 	err := godotenv.Load()
@@ -143,6 +165,7 @@ func main() {
 	cmds.register("login", loginHandler)
 	cmds.register("register", registerHandler)
 	cmds.register("reset", resetHandler)
+	cmds.register("users", usersHandler)
 
 	args := os.Args
 
@@ -164,7 +187,4 @@ func main() {
 		fmt.Printf("Error running command: %s\n", err)
 		os.Exit(1)
 	}
-
-	fmt.Printf("DB URL: %s\n", cfg.DBurl)
-	fmt.Printf("Username: %s\n", cfg.CurrentUser)
 }
