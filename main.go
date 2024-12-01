@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"internal/config"
+	"internal/rss"
 	"os"
 	"time"
 
@@ -135,6 +136,20 @@ func usersHandler(s *state, cmd command) error {
 	return nil
 }
 
+func aggHandler(s *state, cmd command) error {
+	if len(cmd.arguments) > 0 {
+		return fmt.Errorf("too many arguments")
+	}
+
+	rf, err := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		fmt.Printf("Error fetchin rss: %s", err)
+		os.Exit(1)
+	}
+	fmt.Println(rf)
+	return nil
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -166,6 +181,7 @@ func main() {
 	cmds.register("register", registerHandler)
 	cmds.register("reset", resetHandler)
 	cmds.register("users", usersHandler)
+	cmds.register("agg", aggHandler)
 
 	args := os.Args
 
@@ -187,10 +203,4 @@ func main() {
 		fmt.Printf("Error running command: %s\n", err)
 		os.Exit(1)
 	}
-	// rf, err := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
-	// if err != nil {
-	// 	fmt.Printf("Error fetchin rss: %s", err)
-	// 	os.Exit(1)
-	// }
-	// fmt.Println(rf)
 }

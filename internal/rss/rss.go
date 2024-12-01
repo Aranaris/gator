@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 )
@@ -54,5 +55,12 @@ func FetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 		return nil, err
 	}
 
+	rf.Channel.Description = html.UnescapeString(rf.Channel.Description)
+	rf.Channel.Title = html.UnescapeString(rf.Channel.Title)
+	for i := range rf.Channel.Item {
+		rf.Channel.Item[i].Title = html.UnescapeString(rf.Channel.Item[i].Title)
+		rf.Channel.Item[i].Description = html.UnescapeString(rf.Channel.Item[i].Description) 
+	}
+	
 	return &rf, nil
 }
