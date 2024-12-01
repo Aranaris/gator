@@ -3,6 +3,7 @@ module github.com/aranaris/gator
 go 1.22.5
 
 require internal/config v1.0.0
+require internal/rss v1.0.0
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
@@ -11,3 +12,4 @@ require (
 )
 
 replace internal/config => ./internal/config
+replace internal/rss => ./internal/rss

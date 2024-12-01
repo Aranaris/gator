@@ -187,4 +187,10 @@ func main() {
 		fmt.Printf("Error running command: %s\n", err)
 		os.Exit(1)
 	}
+	// rf, err := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	// if err != nil {
+	// 	fmt.Printf("Error fetchin rss: %s", err)
+	// 	os.Exit(1)
+	// }
+	// fmt.Println(rf)
 }
