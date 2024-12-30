@@ -110,6 +110,7 @@ func resetHandler(s *state, cmd command) error {
 	}
 
 	fmt.Printf("%d users have been deleted from the database.", userCount)
+	
 	return nil
 }
 
@@ -150,6 +151,36 @@ func aggHandler(s *state, cmd command) error {
 	return nil
 }
 
+func addFeedHandler(s *state, cmd command) error {
+	if len(cmd.arguments) != 2 {
+		return fmt.Errorf("not enough arguments (expected 2)")
+	}
+	
+	id := uuid.New()
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
+	if err != nil {
+		return err
+	}
+
+	feedParams := database.CreateFeedParams{
+		ID: int64(id.ID()),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name: cmd.arguments[0],
+		Url: cmd.arguments[1],
+		UserID: user.ID,
+	}
+
+	feed, err := s.db.CreateFeed(context.Background(), feedParams)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Feed %s successfully added for user %s", feed.Name, user.Name)
+
+	return nil
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -182,6 +213,7 @@ func main() {
 	cmds.register("reset", resetHandler)
 	cmds.register("users", usersHandler)
 	cmds.register("agg", aggHandler)
+	cmds.register("addfeed", addFeedHandler)
 
 	args := os.Args
 
