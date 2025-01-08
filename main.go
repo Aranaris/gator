@@ -30,6 +30,23 @@ type commands struct {
 	mapping map[string]func(*state, command) error
 }
 
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+	f := func(s *state, cmd command) error {
+		user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
+		if err != nil {
+			return err
+		}
+		
+		err = handler(s, cmd, user)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	
+	return f
+}
+
 func (c *commands) register(name string, f func(*state, command) error){
 	c.mapping[name] = f
 }
@@ -151,16 +168,12 @@ func aggHandler(s *state, cmd command) error {
 	return nil
 }
 
-func addFeedHandler(s *state, cmd command) error {
+func addFeedHandler(s *state, cmd command, user database.User) error {
 	if len(cmd.arguments) != 2 {
 		return fmt.Errorf("not enough arguments (expected 2)")
 	}
 	
 	id := uuid.New()
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
-	if err != nil {
-		return err
-	}
 
 	feedParams := database.CreateFeedParams{
 		ID: int64(id.ID()),
@@ -217,17 +230,12 @@ func feedsHandler(s *state, cmd command) error {
 	return nil
 }
 
-func followHandler(s *state, cmd command) error {
+func followHandler(s *state, cmd command, user database.User) error {
 	if len(cmd.arguments) != 1 {
 		return fmt.Errorf("incorrect number of arguments (expected 1)")
 	}
 
 	id := uuid.New()
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
-	if err != nil {
-		return err
-	}
 
 	feed, err := s.db.GetFeedByURL(context.Background(), cmd.arguments[0])
 	if err != nil {
@@ -247,19 +255,14 @@ func followHandler(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Printf("%s has followed %s.", newFeedFollow.UserName, newFeedFollow.FeedName)
+	fmt.Printf("%s has followed %s.\n", newFeedFollow.UserName, newFeedFollow.FeedName)
 
 	return nil
 }
 
-func followingHandler (s *state, cmd command) error {
+func followingHandler (s *state, cmd command, user database.User) error {
 	if len(cmd.arguments) > 0 {
 		return fmt.Errorf("too many arguments")
-	}
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
-	if err != nil {
-		return err
 	}
 
 	feedFollows, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
@@ -308,10 +311,10 @@ func main() {
 	cmds.register("reset", resetHandler)
 	cmds.register("users", usersHandler)
 	cmds.register("agg", aggHandler)
-	cmds.register("addfeed", addFeedHandler)
+	cmds.register("addfeed", middlewareLoggedIn(addFeedHandler))
 	cmds.register("feeds", feedsHandler)
-	cmds.register("follow", followHandler)
-	cmds.register("following", followingHandler)
+	cmds.register("follow", middlewareLoggedIn(followHandler))
+	cmds.register("following", middlewareLoggedIn(followingHandler))
 
 	args := os.Args
 
