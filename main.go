@@ -176,6 +176,19 @@ func addFeedHandler(s *state, cmd command) error {
 		return err
 	}
 
+	followParams := database.CreateFeedFollowParams{
+		ID: int64(id.ID()),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID: user.ID,
+		FeedID: feed.ID,
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), followParams)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Feed %s successfully added for user %s", feed.Name, user.Name)
 
 	return nil
@@ -199,6 +212,65 @@ func feedsHandler(s *state, cmd command) error {
 		}
 
 		fmt.Printf("* Name: %s || URL: %s || User: %s\n", feeds[i].Name, feeds[i].Url, user.Name)
+	}
+
+	return nil
+}
+
+func followHandler(s *state, cmd command) error {
+	if len(cmd.arguments) != 1 {
+		return fmt.Errorf("incorrect number of arguments (expected 1)")
+	}
+
+	id := uuid.New()
+
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.GetFeedByURL(context.Background(), cmd.arguments[0])
+	if err != nil {
+		return err
+	}
+
+	followParams := database.CreateFeedFollowParams{
+		ID: int64(id.ID()),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID: user.ID,
+		FeedID: feed.ID,
+	}
+
+	newFeedFollow, err := s.db.CreateFeedFollow(context.Background(), followParams)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s has followed %s.", newFeedFollow.UserName, newFeedFollow.FeedName)
+
+	return nil
+}
+
+func followingHandler (s *state, cmd command) error {
+	if len(cmd.arguments) > 0 {
+		return fmt.Errorf("too many arguments")
+	}
+
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUser)
+	if err != nil {
+		return err
+	}
+
+	feedFollows, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("User %s is following feeds: \n", s.cfg.CurrentUser)
+
+	for i := 0; i < len(feedFollows); i++ {
+		fmt.Printf("- %s\n", feedFollows[i].FeedName)
 	}
 
 	return nil
@@ -238,6 +310,8 @@ func main() {
 	cmds.register("agg", aggHandler)
 	cmds.register("addfeed", addFeedHandler)
 	cmds.register("feeds", feedsHandler)
+	cmds.register("follow", followHandler)
+	cmds.register("following", followingHandler)
 
 	args := os.Args
 
