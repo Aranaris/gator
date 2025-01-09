@@ -279,6 +279,30 @@ func followingHandler (s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func unFollowHandler (s *state, cmd command, user database.User) error {
+	if len(cmd.arguments) != 1 {
+		return fmt.Errorf("incorrect number of arguments (expected 1)")
+	}
+
+	feed, err := s.db.GetFeedByURL(context.Background(), cmd.arguments[0])
+	if err != nil {
+		return err
+	}
+
+	deleteParams := database.DeleteFeedFollowParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	}
+
+	_ , err = s.db.DeleteFeedFollow(context.Background(), deleteParams)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s has unfollowed %s\n", user.Name, feed.Url)
+	return nil
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -315,6 +339,7 @@ func main() {
 	cmds.register("feeds", feedsHandler)
 	cmds.register("follow", middlewareLoggedIn(followHandler))
 	cmds.register("following", middlewareLoggedIn(followingHandler))
+	cmds.register("unfollow", middlewareLoggedIn(unFollowHandler))
 
 	args := os.Args
 

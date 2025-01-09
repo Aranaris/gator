@@ -27,3 +27,10 @@ FROM
 	JOIN feeds on feed_follows.feed_id = feeds.id
 WHERE
 	feed_follows.user_id = $1;
+
+-- name: DeleteFeedFollow :one
+DELETE FROM feed_follows
+WHERE
+	feed_follows.user_id = $1
+	and feed_follows.feed_id = $2
+RETURNING *;
