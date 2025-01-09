@@ -155,16 +155,46 @@ func usersHandler(s *state, cmd command) error {
 }
 
 func aggHandler(s *state, cmd command) error {
-	if len(cmd.arguments) > 0 {
-		return fmt.Errorf("too many arguments")
+	if len(cmd.arguments) != 1 {
+		return fmt.Errorf("incorrect number of arguments (expected 1)")
 	}
 
-	rf, err := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	timeBetweenReqs, err := time.ParseDuration(cmd.arguments[0])
 	if err != nil {
-		fmt.Printf("Error fetchin rss: %s", err)
-		os.Exit(1)
+		return err
 	}
-	fmt.Println(rf)
+
+	ticker := time.NewTicker(timeBetweenReqs)
+	for ; ; <- ticker.C {
+		err = scrapeFeeds(s)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func scrapeFeeds(s *state) error {
+	feed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return err
+	}
+	_, err = s.db.MarkFeedFetched(context.Background(), feed.ID)
+	if err != nil {
+		return err
+	}
+
+	rf, err := rss.FetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		fmt.Printf("Error fetching rss: %s", err)
+		return err
+	}
+
+	fmt.Println(rf.Channel.Title)
+	newFeedItems := rf.Channel.Item
+	for i := range newFeedItems {
+		fmt.Printf("- %s\n", newFeedItems[i].Title)
+	}
+
 	return nil
 }
 
@@ -202,7 +232,7 @@ func addFeedHandler(s *state, cmd command, user database.User) error {
 		return err
 	}
 
-	fmt.Printf("Feed %s successfully added for user %s", feed.Name, user.Name)
+	fmt.Printf("Feed %s successfully added for user %s\n", feed.Name, user.Name)
 
 	return nil
 }
