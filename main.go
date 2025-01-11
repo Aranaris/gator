@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -189,11 +190,40 @@ func scrapeFeeds(s *state) error {
 		return err
 	}
 
-	fmt.Println(rf.Channel.Title)
 	newFeedItems := rf.Channel.Item
 	for i := range newFeedItems {
-		fmt.Printf("- %s\n", newFeedItems[i].Title)
+		postID := uuid.New()
+
+		layout := "Mon, 02 Jan 2006 15:04:05 -0700"
+		parsedTime, err := time.Parse(layout, newFeedItems[i].PubDate)
+		if err != nil {
+			return err
+		}
+
+		postParams := database.CreatePostParams{
+			ID: int64(postID.ID()),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Title: newFeedItems[i].Title,
+			Url: newFeedItems[i].Link,
+			Description: sql.NullString{
+				String: newFeedItems[i].Description,
+				Valid: true,
+			},
+			PublishedAt: parsedTime,
+			FeedID: feed.ID,
+		}
+
+		_, err = s.db.CreatePost(context.Background(), postParams)
+		if err, ok := err.(*pq.Error); ok {
+			if err.Message != "duplicate key value violates unique constraint \"posts_url_key\"" {
+				fmt.Println(err)
+				return err
+			}
+		}
 	}
+
+	fmt.Printf("Posts from feed %s saved.\n", feed.Name)
 
 	return nil
 }
