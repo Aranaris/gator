@@ -7,6 +7,7 @@ import (
 	"internal/config"
 	"internal/rss"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aranaris/gator/internal/database"
@@ -363,6 +364,39 @@ func unFollowHandler (s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func browseHandler (s *state, cmd command, user database.User) error {
+	var limit int
+
+	if len(cmd.arguments) > 1 {
+		return fmt.Errorf("too many arguments")
+	} else if len(cmd.arguments) == 1 {
+		converted, err := strconv.Atoi(cmd.arguments[0]) 
+		if err != nil {
+			return err
+		}
+		limit = converted
+	} else {
+		limit = 2
+	}
+
+	getParams := database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit: int32(limit),
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), getParams)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Showing last %d RSS posts for %s:\n", limit, user.Name)
+
+	for i := range posts {
+		fmt.Printf("- %s: %s\n", posts[i].PublishedAt.Format("Jan 02 06"), posts[i].Title)
+	}
+	return nil
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -400,6 +434,7 @@ func main() {
 	cmds.register("follow", middlewareLoggedIn(followHandler))
 	cmds.register("following", middlewareLoggedIn(followingHandler))
 	cmds.register("unfollow", middlewareLoggedIn(unFollowHandler))
+	cmds.register("browse", middlewareLoggedIn(browseHandler))
 
 	args := os.Args
 
